@@ -128,13 +128,13 @@
 
 	var count = 1;
 	
-    var dappAddress = "n1kaUvVW85Ns8BACbdVvJpDauN1kRXVd4b5";
+    var dappAddress = "n1tmmWHW4VpsukAyB9Er1NpqJzqq2aiFVRa";
 
     //here we use neb.js to call the "get" function to search from the Dictionary
     var nebulas = require("nebulas"),
         Account = nebulas.Account,
         neb = new nebulas.Neb();
-    neb.setRequest(new nebulas.HttpRequest("https://testnet.nebulas.io"));
+    neb.setRequest(new nebulas.HttpRequest("https://mainnet.nebulas.io"));
 
     // 定时获取日志
     function refreshLog() 
