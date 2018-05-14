@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=0.5, maximum-scale=0.5, minimum-scale=0.5, user-scalable=no">
+    <meta name="x5-fullscreen" content="true">
+    <meta name="full-screen" content="yes">
+
+    <title>斗地主</title>
+    <link rel="stylesheet" href="lib/bootstrap-4.0.0-dist/css/bootstrap.min.css">
+    <style>
+        .logo {
+			text-align: center;
+			background-color: #fff;
+            height: 500px;
+            margin: auto;
+			left: 50%;
+			top: 50%;			
+        }
+
+        .name {
+            text-align: center;
+            font-size: 15px;
+        }
+
+        .img {
+            width: 48%;
+            height: 53%;
+            margin: auto;
+            margin-top: 38px;
+        }
+
+        .img img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .search {
+            width: 80%;
+            height: 100px;
+            margin: auto;
+        }
+
+        .noExtension {
+            width: 60%;
+            height: 100px;
+            margin: auto;
+            font-size: 23px;
+        }
+
+        #search_value {
+            width: 80%;
+            height: 50px;
+            box-shadow: 3px 5px grey, 1px 1px #333;
+        }
+
+        .search button {
+            width: 18%;
+            height: 50px;
+            margin-left: 6px;
+            box-shadow: 3px 5px grey, 1px 1px #333;
+        }
+
+        .hide{
+            display: none;
+        }
+
+        .contenner{
+            background: url("img/bg.jpg");
+            height: 1500px;
+        }
+		.main{
+			text-align: center;
+			background-color: #fff;
+			border-radius: 20px;
+			width: 300px;
+			height: 150px;
+			position: absolute;
+			left: 50%;
+			top: 20%;
+			transform: translate(-50%,-50%);
+		}		
+		
+		.result{
+			text-align: center;
+			background-color: #ccc;
+			border-radius: 20px;
+			width: 600px;
+			height: 500px;
+			position: absolute;
+			left: 50%;
+			top: 60%;
+			transform: translate(-50%,-50%);
+		}		
+    </style>
+</head>
+
+<body>
+<div class="contenner">
+    <div class="noExtension hide" id="noExtension">
+        NOTE: Please install <a target="_blank" href="https://github.com/ChengOrangeJu/WebExtensionWallet">WebExtensionWallet</a>  to use DDZ
+    </div>
+    <div class="main">
+		<p style="font-size:12px;">
+		斗地主游戏规则说明：<br>点击开始游戏，
+		充值对应NAS，满三人后随机选出地主。
+		被选中地主的人，财产被其他两个长工
+		瓜分。游戏平台收取千分之一手续费。
+		单次花费0.0001NAS
+		</p>
+		<br>
+        <button id=start>开始游戏</button>
+    </div>
+
+    <div class="result">
+		<p id="result"></p>
+    </div>
+</div>
+<script src=lib/jquery-3.3.1.min.js></script>
+<script src=lib/nebPay.js></script>
+<script src=lib/bootstrap-4.0.0-dist/js/bootstrap.min.js></script>
+<script src=lib/nebulas.js></script>
+<script>
+
+    "use strict";
+
+	var count = 1;
+	
+    var dappAddress = "n1kaUvVW85Ns8BACbdVvJpDauN1kRXVd4b5";
+
+    //here we use neb.js to call the "get" function to search from the Dictionary
+    var nebulas = require("nebulas"),
+        Account = nebulas.Account,
+        neb = new nebulas.Neb();
+    neb.setRequest(new nebulas.HttpRequest("https://testnet.nebulas.io"));
+
+    // 定时获取日志
+    function refreshLog() 
+	{
+        var from = Account.NewAccount().getAddressString();
+
+        var value = "0";
+        var nonce = "0"
+        var gas_price = "1000000"
+        var gas_limit = "2000000"
+        var callFunction = "getLog";
+        var callArgs = "[]"; //in the form of ["args"]
+        var contract = {
+            "function": callFunction,
+            "args": callArgs
+        }
+
+        neb.api.call(from,dappAddress,value,nonce,gas_price,gas_limit,contract).then(function (resp) {
+            cbGetLog(resp)
+        }).catch(function (err) {
+            console.log("error:" + err.message)
+        })
+	}
+
+    //return of getLog,
+    function cbGetLog(resp) 
+	{
+        var result = resp.result    ////resp is an object, resp.result is a JSON string
+        console.log("return of rpc call: " + JSON.stringify(result))
+
+        if (result === 'null'){
+        } else{
+            //if result is not null, then it should be "return value" or "error message"
+            try{
+                result = JSON.parse(result)
+            }catch (err){
+                //result is the error message
+            }
+
+			var len = result.length;
+			var i = 0;
+			var str = "";
+			for (i = 0; i < len; i++)
+			{
+				str = str + result[i] + "<br>";
+			}
+			
+			$("#result").html(str);
+        }
+    }
+
+	refreshLog();
+	window.setInterval(refreshLog, 10000);	
+
+    var NebPay = require("nebpay");     //https://github.com/nebulasio/nebPay
+    var nebPay = new NebPay();
+    var serialNumber
+
+    $("#start").click(function() {
+        var to = dappAddress;
+        var value = 0.0001;
+        var callFunction = "joinGame"
+        var callArgs = "[]"
+
+        serialNumber = nebPay.call(to, value, callFunction, callArgs, {    //使用nebpay的call接口去调用合约,
+            listener: cbStart        //设置listener, 处理交易返回信息
+        });
+
+        intervalQuery = setInterval(function () {
+            funcIntervalQuery();
+        }, 10000);
+    });
+
+    var intervalQuery
+
+    function funcIntervalQuery() {
+        nebPay.queryPayInfo(serialNumber)   //search transaction result from server (result upload to server by app)
+            .then(function (resp) {
+                console.log("tx result: " + resp)   //resp is a JSON string
+                var respObject = JSON.parse(resp)
+                if(respObject.code === 0){
+                    clearInterval(intervalQuery)
+                }
+            })
+            .catch(function (err) {
+                console.log(err);
+            });
+    }
+
+    function cbStart(resp) {
+        console.log("response of start: " + JSON.stringify(resp))
+    }
+
+</script>
+</body>
+
+</html>
